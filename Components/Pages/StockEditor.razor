@@ -1,0 +1,40 @@
+@page "/stockeditor"
+@using BlazorServerSentEvents.Services
+@inject IProductStockService ProductStockService
+
+<PageTitle>Update Stock</PageTitle>
+
+<h1>Update Product Stock</h1>
+
+<EditForm Model="this" OnValidSubmit="UpdateStock" style="max-width: 400px">
+    <div class="mb-3">
+        <label for="productId" class="form-label">Product ID</label>
+        <InputNumber id="productId" min="1" class="form-control" @bind-Value="productId" />
+    </div>
+
+    <div class="mb-3">
+        <label for="stock" class="form-label">Available Stock</label>
+        <InputNumber id="stock" min="0" class="form-control" @bind-Value="availableStock" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Update stock</button>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(statusMessage))
+{
+    <div class="alert alert-success mt-3" role="alert">
+        @statusMessage
+    </div>
+}
+
+@code {
+    private int productId = 1;
+    private int availableStock = 0;
+    private string statusMessage = string.Empty;
+
+    private void UpdateStock()
+    {
+        ProductStockService.UpdateStock(productId, availableStock);
+        statusMessage = $"Stock updated for product {productId}: {availableStock}.";
+    }
+}

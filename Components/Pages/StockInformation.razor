@@ -1,0 +1,79 @@
+@page "/stocks"
+@using BlazorServerSentEvents.Services
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>Stock Information</PageTitle>
+
+<h1>Stock Information</h1>
+
+@if (stockItems.Count == 0)
+{
+    <p>Waiting for stock updates...</p>
+}
+else
+{
+    <table class="table table-striped table-bordered align-middle" style="max-width: 600px">
+        <thead class="table">
+            <tr>
+                <th>Product ID</th>
+                <th>Stock</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in stockItems)
+            {
+                <tr>
+                    <td>@item.ProductId</td>
+                    <td>@item.Stock</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private readonly List<ProductStock> stockItems = new();
+    private IJSObjectReference? module;
+    private DotNetObjectReference<StockInformation>? dotNetHelper;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/stock-information.js");
+        dotNetHelper = DotNetObjectReference.Create(this);
+        await module.InvokeVoidAsync("connect", dotNetHelper, "/stockinformation");
+    }
+
+    [JSInvokable]
+    public void ReceiveStockUpdate(int productId, int stock)
+    {
+        var index = stockItems.FindIndex(item => item.ProductId == productId);
+
+        if (index < 0)
+        {
+            stockItems.Add(new ProductStock(productId, stock));
+        }
+        else
+        {
+            stockItems[index] = stockItems[index] with { Stock = stock };
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (module is not null)
+        {
+            await module.InvokeVoidAsync("disconnect");
+            await module.DisposeAsync();
+        }
+
+        dotNetHelper?.Dispose();
+    }
+}
